@@ -1,3 +1,4 @@
+
 # FarmConnect AI — System Architecture & Design Specification
 
 ## 1. Executive Summary & Problem Context
@@ -8,7 +9,8 @@ Marginal farmers in coastal Karnataka (Dakshina Kannada and Udupi districts) cul
 - **Key Produce:** Arecanut (*Adike*), Coconut (*Tengu*), Black Pepper (*Menasu*), Cashew (*Geru*), Udupi Mattu Gulla (GI-tagged brinjal), Shankarpura Mallige (GI-tagged jasmine), Kokum (*Punarpuli*), Betel leaves, and seasonal vegetables/fruits (Banana, Pineapples).
 - **Core Challenges:**
   1. **Intermediary Exploitation:** Middlemen capture 30–50% margins while smallholders lack bargaining power.
-  2. **Fragmented Small Lot Sizes:** Single farmers cannot meet bulk minimum order quantities (MOQ) demanded by hotels, caterers, supermarkets, and restaurants in Mangalore, Manipal, and Udupi.
+  2. **Fragmented Small Lot Sizes:** Single farmers cannot meet bulk minimum
+   order quantities (MOQ) demanded by hotels, caterers, supermarkets, and restaurants in Mangalore, Manipal, and Udupi.
   3. **Price Asymmetry:** Difficulty accessing accurate APMC (Bantwal, Mangalore, Puttur, Kundapura, Udupi) trends.
   4. **Crop Health Vulnerabilities:** Fungal diseases (e.g., *Koleroga* in arecanut, bud rot in palms, yellow leaf disease) threaten seasonal livelihood.
   5. **Language & Tech Barriers:** Farmers communicate primarily in Kannada or Tulu; text-heavy English applications fail in the field.

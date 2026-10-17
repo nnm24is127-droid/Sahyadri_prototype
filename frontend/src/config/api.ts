@@ -4,6 +4,8 @@
 
 export const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
+  BLOCKCHAIN_RPC_URL: import.meta.env.VITE_BLOCKCHAIN_RPC_URL || 'http://localhost:8545',
+  CHAIN_ID: 31337,
   TIMEOUT_MS: 8000,
   // Central flag: When true, API services fall back to isolated demonstration data
   // if backend endpoints are not reachable or return errors.

@@ -1,0 +1,50 @@
+services:
+  # 1. Local EVM Blockchain Node (Hardhat)
+  blockchain:
+    build:
+      context: ./blockchain
+      dockerfile: Dockerfile
+    container_name: farmconnect-blockchain
+    ports:
+      - "8545:8545"
+    networks:
+      - farmconnect-net
+
+  # 2. FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: farmconnect-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=True
+      - DATABASE_URL=sqlite:///./farmconnect.db
+      - BLOCKCHAIN_RPC_URL=http://blockchain:8545
+      - CHAIN_ID=31337
+      - OMNIROUTE_API_KEY=${OMNIROUTE_API_KEY:-}
+      - OMNIROUTE_BASE_URL=${OMNIROUTE_BASE_URL:-https://api.omniroute.ai/v1}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    depends_on:
+      - blockchain
+    networks:
+      - farmconnect-net
+
+  # 3. React Frontend Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: farmconnect-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - farmconnect-net
+
+networks:
+  farmconnect-net:
+    driver: bridge
