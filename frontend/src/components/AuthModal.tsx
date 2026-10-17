@@ -231,6 +231,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {mode === 'login' ? (
             /* =================== LOGIN FORM =================== */
             <form onSubmit={handleLoginSubmit} className="space-y-4">
+              {/* Quick 1-Tap Demo Logins */}
+              <div className="p-2.5 rounded-xl bg-forest-50/70 border border-forest-200/60 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-forest-800">
+                  <span className="flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-forest-600" />
+                    <span>Quick Demo Sign-In (1-Tap):</span>
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail('ramesh@farmconnect.demo');
+                      setPassword('FarmerPass123!');
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-forest-200 text-[11px] font-medium text-forest-900 hover:bg-forest-100/60 active:scale-95 shadow-xs transition-all"
+                  >
+                    👨‍🌾 Farmer (Ramesh)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail('procurement@oceanpearlhotels.demo');
+                      setPassword('BuyerPass123!');
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-forest-200 text-[11px] font-medium text-forest-900 hover:bg-forest-100/60 active:scale-95 shadow-xs transition-all"
+                  >
+                    🏨 Buyer (Ocean Pearl)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail('admin@farmconnect.org');
+                      setPassword('AdminPass123!');
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-forest-200 text-[11px] font-medium text-forest-900 hover:bg-forest-100/60 active:scale-95 shadow-xs transition-all"
+                  >
+                    🛡️ Admin (Dr. Rao)
+                  </button>
+                </div>
+              </div>
+
               {/* Email */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 flex items-center gap-1">

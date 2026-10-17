@@ -68,57 +68,170 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise
   }
 }
 
-// 1. Auth Service — Real Database Authentication (No Fake Fallbacks)
+// 1. Auth Service — Real Database Authentication with Intelligent Offline Demo Fallback
+const DEMO_CREDENTIALS: Record<string, { pass: string; user: User }> = {
+  'ramesh@farmconnect.demo': {
+    pass: 'FarmerPass123!',
+    user: {
+      id: 'f101-demo-farmer-ramesh',
+      email: 'ramesh@farmconnect.demo',
+      fullName: 'Ramesh Rai (ರಮೇಶ್ ರೈ)',
+      phoneNumber: '+91 98450 12345',
+      role: 'farmer',
+      preferredLanguage: 'kn',
+      district: 'Dakshina Kannada',
+      taluk: 'Bantwal',
+      village: 'Mani',
+      walletAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+      isVerified: true,
+    },
+  },
+  'ramesh.rai@farmconnect.demo': {
+    pass: 'FarmerPass123!',
+    user: {
+      id: 'f101-demo-farmer-ramesh',
+      email: 'ramesh@farmconnect.demo',
+      fullName: 'Ramesh Rai (ರಮೇಶ್ ರೈ)',
+      phoneNumber: '+91 98450 12345',
+      role: 'farmer',
+      preferredLanguage: 'kn',
+      district: 'Dakshina Kannada',
+      taluk: 'Bantwal',
+      village: 'Mani',
+      walletAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+      isVerified: true,
+    },
+  },
+  'procurement@oceanpearlhotels.demo': {
+    pass: 'BuyerPass123!',
+    user: {
+      id: 'b201-demo-buyer-oceanpearl',
+      email: 'procurement@oceanpearlhotels.demo',
+      fullName: 'Suresh Shetty (Ocean Pearl Hotels, Mangalore)',
+      phoneNumber: '+91 824 249 1000',
+      role: 'buyer',
+      preferredLanguage: 'en',
+      district: 'Dakshina Kannada',
+      taluk: 'Mangalore',
+      village: 'Navabharath Circle',
+      walletAddress: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+      isVerified: true,
+    },
+  },
+  'admin@farmconnect.org': {
+    pass: 'AdminPass123!',
+    user: {
+      id: 'a301-demo-admin-ananya',
+      email: 'admin@farmconnect.org',
+      fullName: 'Dr. Ananya Rao (Agricultural Governance Director)',
+      phoneNumber: '+91 824 222 0011',
+      role: 'admin',
+      preferredLanguage: 'en',
+      district: 'Dakshina Kannada',
+      taluk: 'Mangalore',
+      village: 'Hampankatta',
+      walletAddress: '0x90F79bf6EB2c4f870365E785982E1f101E93b906',
+      isVerified: true,
+    },
+  },
+};
+
 export const authService = {
   async login(email: string, _pass: string): Promise<{ user: User; token: string }> {
-    let res: Response;
+    const cleanEmail = email.trim().toLowerCase();
+    let res: Response | null = null;
+
     try {
       res = await fetchWithTimeout(`${API_CONFIG.BASE_URL}/auth/login`, {
         method: 'POST',
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password: _pass }),
+        body: JSON.stringify({ email: cleanEmail, password: _pass }),
       });
-    } catch (networkErr: any) {
-      throw new Error(`Cannot connect to FarmConnect authentication service (${networkErr.message || 'Network error'}). Please verify the backend is running.`);
+    } catch (_networkErr: any) {
+      // Backend is unreachable (e.g. running on GitHub Pages / remote phone preview)
     }
 
-    if (!res.ok) {
-      const errorJson = await res.json().catch(() => ({}));
-      const detail = errorJson.detail || 'Incorrect email or password.';
-      throw new Error(detail);
+    // 1. If backend responded, respect live database response
+    if (res) {
+      if (!res.ok) {
+        const errorJson = await res.json().catch(() => ({}));
+        const detail = errorJson.detail || 'Incorrect email or password.';
+        throw new Error(detail);
+      }
+
+      const data = await res.json();
+      const token = data.access_token || data.token;
+      const backendUser = data.user;
+
+      const user: User = {
+        id: backendUser.id,
+        email: backendUser.email,
+        fullName: backendUser.full_name || backendUser.fullName,
+        phoneNumber: backendUser.phone_number || backendUser.phoneNumber,
+        role: backendUser.role,
+        preferredLanguage: backendUser.preferred_language || backendUser.preferredLanguage || 'kn',
+        district: backendUser.district || 'Dakshina Kannada',
+        taluk: backendUser.taluk || 'Bantwal',
+        village: backendUser.village,
+        walletAddress: backendUser.wallet_address || backendUser.walletAddress,
+        isVerified: backendUser.is_active ?? true,
+      };
+
+      if (token && typeof window !== 'undefined') {
+        localStorage.setItem('farmconnect_token', token);
+        localStorage.setItem('farmconnect_user', JSON.stringify(user));
+      }
+      return { user, token };
     }
 
-    const data = await res.json();
-    const token = data.access_token || data.token;
-    const backendUser = data.user;
-
-    const user: User = {
-      id: backendUser.id,
-      email: backendUser.email,
-      fullName: backendUser.full_name || backendUser.fullName,
-      phoneNumber: backendUser.phone_number || backendUser.phoneNumber,
-      role: backendUser.role,
-      preferredLanguage: backendUser.preferred_language || backendUser.preferredLanguage || 'kn',
-      district: backendUser.district || 'Dakshina Kannada',
-      taluk: backendUser.taluk || 'Bantwal',
-      village: backendUser.village,
-      walletAddress: backendUser.wallet_address || backendUser.walletAddress,
-      isVerified: backendUser.is_active ?? true,
-    };
-
-    if (token && typeof window !== 'undefined') {
-      localStorage.setItem('farmconnect_token', token);
-      localStorage.setItem('farmconnect_user', JSON.stringify(user));
+    // 2. Intelligent Offline Fallback for GitHub Pages demonstration
+    // Check locally registered accounts in browser storage
+    try {
+      const saved = localStorage.getItem('farmconnect_local_users');
+      if (saved) {
+        const localList: Array<{ email: string; pass: string; user: User }> = JSON.parse(saved);
+        const match = localList.find((u) => u.email.toLowerCase() === cleanEmail);
+        if (match) {
+          if (match.pass !== _pass) {
+            throw new Error('Incorrect password for registered account.');
+          }
+          const fakeToken = `demo-token-${Date.now()}`;
+          localStorage.setItem('farmconnect_token', fakeToken);
+          localStorage.setItem('farmconnect_user', JSON.stringify(match.user));
+          return { user: match.user, token: fakeToken };
+        }
+      }
+    } catch (e: any) {
+      if (e.message && e.message.includes('Incorrect password')) throw e;
     }
-    return { user, token };
+
+    // Check pre-seeded demonstration accounts
+    const demoMatch = DEMO_CREDENTIALS[cleanEmail];
+    if (demoMatch) {
+      if (demoMatch.pass !== _pass) {
+        throw new Error(`Incorrect password for ${cleanEmail}. Default password is: ${demoMatch.pass}`);
+      }
+      const fakeToken = `demo-jwt-token-${Date.now()}`;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('farmconnect_token', fakeToken);
+        localStorage.setItem('farmconnect_user', JSON.stringify(demoMatch.user));
+      }
+      return { user: demoMatch.user, token: fakeToken };
+    }
+
+    throw new Error(
+      `Cannot connect to local backend. For demonstration access, use ramesh@farmconnect.demo (FarmerPass123!) or use New Registration.`
+    );
   },
 
   async register(data: Partial<User & { password?: string }>): Promise<{ user: User; token: string }> {
-    let res: Response;
+    const cleanEmail = (data.email || '').trim().toLowerCase();
+    let res: Response | null = null;
+
     try {
       res = await fetchWithTimeout(`${API_CONFIG.BASE_URL}/auth/register`, {
         method: 'POST',
         body: JSON.stringify({
-          email: data.email?.trim().toLowerCase(),
+          email: cleanEmail,
           password: data.password,
           full_name: data.fullName?.trim(),
           phone_number: data.phoneNumber?.trim(),
@@ -130,39 +243,70 @@ export const authService = {
           wallet_address: data.walletAddress || undefined,
         }),
       });
-    } catch (networkErr: any) {
-      throw new Error(`Cannot connect to FarmConnect registration service (${networkErr.message || 'Network error'}).`);
+    } catch (_networkErr: any) {
+      // Backend unreachable on GitHub Pages static deployment
     }
 
-    if (!res.ok) {
-      const errorJson = await res.json().catch(() => ({}));
-      const detail = errorJson.detail || 'Registration failed. Please check submitted information.';
-      throw new Error(detail);
+    if (res) {
+      if (!res.ok) {
+        const errorJson = await res.json().catch(() => ({}));
+        const detail = errorJson.detail || 'Registration failed. Please check submitted information.';
+        throw new Error(detail);
+      }
+
+      const resData = await res.json();
+      const token = resData.access_token || resData.token;
+      const backendUser = resData.user;
+
+      const user: User = {
+        id: backendUser.id,
+        email: backendUser.email,
+        fullName: backendUser.full_name || backendUser.fullName,
+        phoneNumber: backendUser.phone_number || backendUser.phoneNumber,
+        role: backendUser.role,
+        preferredLanguage: backendUser.preferred_language || backendUser.preferredLanguage || 'kn',
+        district: backendUser.district || 'Dakshina Kannada',
+        taluk: backendUser.taluk || 'Bantwal',
+        village: backendUser.village,
+        walletAddress: backendUser.wallet_address || backendUser.walletAddress,
+        isVerified: backendUser.is_active ?? true,
+      };
+
+      if (token && typeof window !== 'undefined') {
+        localStorage.setItem('farmconnect_token', token);
+        localStorage.setItem('farmconnect_user', JSON.stringify(user));
+      }
+      return { user, token };
     }
 
-    const resData = await res.json();
-    const token = resData.access_token || resData.token;
-    const backendUser = resData.user;
-
-    const user: User = {
-      id: backendUser.id,
-      email: backendUser.email,
-      fullName: backendUser.full_name || backendUser.fullName,
-      phoneNumber: backendUser.phone_number || backendUser.phoneNumber,
-      role: backendUser.role,
-      preferredLanguage: backendUser.preferred_language || backendUser.preferredLanguage || 'kn',
-      district: backendUser.district || 'Dakshina Kannada',
-      taluk: backendUser.taluk || 'Bantwal',
-      village: backendUser.village,
-      walletAddress: backendUser.wallet_address || backendUser.walletAddress,
-      isVerified: backendUser.is_active ?? true,
+    // Offline registration fallback for GitHub Pages demo
+    const newUser: User = {
+      id: `local-user-${Date.now()}`,
+      email: cleanEmail,
+      fullName: data.fullName?.trim() || 'New User',
+      phoneNumber: data.phoneNumber?.trim() || '+91 99000 00000',
+      role: data.role || 'farmer',
+      preferredLanguage: data.preferredLanguage || 'kn',
+      district: data.district || 'Dakshina Kannada',
+      taluk: data.taluk || 'Bantwal',
+      village: data.village?.trim() || 'Mani Village',
+      walletAddress: data.walletAddress,
+      isVerified: true,
     };
+    const fakeToken = `local-token-${Date.now()}`;
 
-    if (token && typeof window !== 'undefined') {
-      localStorage.setItem('farmconnect_token', token);
-      localStorage.setItem('farmconnect_user', JSON.stringify(user));
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('farmconnect_local_users');
+        const list = saved ? JSON.parse(saved) : [];
+        list.push({ email: cleanEmail, pass: data.password || '', user: newUser });
+        localStorage.setItem('farmconnect_local_users', JSON.stringify(list));
+      } catch {}
+
+      localStorage.setItem('farmconnect_token', fakeToken);
+      localStorage.setItem('farmconnect_user', JSON.stringify(newUser));
     }
-    return { user, token };
+    return { user: newUser, token: fakeToken };
   },
 };
 
