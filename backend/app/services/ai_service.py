@@ -55,79 +55,94 @@ class AIService:
 
         # 1. OmniRoute Provider
         if self.omniroute_key and self.omniroute_key.strip() and not self.omniroute_key.startswith("your_"):
-            omni_url = f"{self.omniroute_base_url}/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {self.omniroute_key.strip()}",
-                "Content-Type": "application/json",
-            }
-            payload = {
-                "model": self.omniroute_model or "gpt-4o-mini",
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_text},
-                ],
-                "temperature": temperature,
-                "max_tokens": self.max_tokens,
-            }
-            async with httpx.AsyncClient(timeout=float(self.timeout)) as client:
-                resp = await client.post(omni_url, headers=headers, json=payload)
-                if resp.is_success:
-                    data = resp.json()
-                    choices = data.get("choices", [])
-                    if choices:
-                        return choices[0].get("message", {}).get("content", "").strip()
+            try:
+                omni_url = f"{self.omniroute_base_url}/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {self.omniroute_key.strip()}",
+                    "Content-Type": "application/json",
+                }
+                payload = {
+                    "model": self.omniroute_model or "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_text},
+                    ],
+                    "temperature": temperature,
+                    "max_tokens": self.max_tokens,
+                }
+                async with httpx.AsyncClient(timeout=float(self.timeout)) as client:
+                    resp = await client.post(omni_url, headers=headers, json=payload)
+                    if resp.is_success:
+                        data = resp.json()
+                        choices = data.get("choices", [])
+                        if choices:
+                            return choices[0].get("message", {}).get("content", "").strip()
+                    else:
+                        logger.warning(f"OmniRoute returned status {resp.status_code}: {resp.text[:200]}")
+            except Exception as e:
+                logger.warning(f"OmniRoute provider call failed ({e}); falling through to next configured provider.")
 
         # 2. Google Gemini Provider
         if self.gemini_key and self.gemini_key.strip() and not self.gemini_key.startswith("your_"):
-            gemini_url = (
-                f"https://generativelanguage.googleapis.com/v1beta/models/{self.gemini_model}:generateContent"
-                f"?key={self.gemini_key.strip()}"
-            )
-            payload = {
-                "contents": [
-                    {
-                        "parts": [
-                            {"text": f"{system_prompt}\n\n{user_text}"}
-                        ]
-                    }
-                ],
-                "generationConfig": {
-                    "temperature": temperature,
-                    "maxOutputTokens": self.max_tokens,
-                },
-            }
-            async with httpx.AsyncClient(timeout=float(self.timeout)) as client:
-                resp = await client.post(gemini_url, json=payload)
-                if resp.is_success:
-                    data = resp.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts:
-                            return parts[0].get("text", "").strip()
+            try:
+                gemini_url = (
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{self.gemini_model}:generateContent"
+                    f"?key={self.gemini_key.strip()}"
+                )
+                payload = {
+                    "contents": [
+                        {
+                            "parts": [
+                                {"text": f"{system_prompt}\n\n{user_text}"}
+                            ]
+                        }
+                    ],
+                    "generationConfig": {
+                        "temperature": temperature,
+                        "maxOutputTokens": self.max_tokens,
+                    },
+                }
+                async with httpx.AsyncClient(timeout=float(self.timeout)) as client:
+                    resp = await client.post(gemini_url, json=payload)
+                    if resp.is_success:
+                        data = resp.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts:
+                                return parts[0].get("text", "").strip()
+                    else:
+                        logger.warning(f"Gemini returned status {resp.status_code}: {resp.text[:200]}")
+            except Exception as e:
+                logger.warning(f"Google Gemini provider call failed ({e}); falling through to next configured provider.")
 
         # 3. Anthropic Claude Provider
         if self.anthropic_key and self.anthropic_key.strip() and not self.anthropic_key.startswith("your_"):
-            headers = {
-                "x-api-key": self.anthropic_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            }
-            messages = [{"role": "user", "content": user_content if isinstance(user_content, list) else user_text}]
-            payload = {
-                "model": self.anthropic_model,
-                "max_tokens": self.max_tokens,
-                "temperature": temperature,
-                "system": system_prompt,
-                "messages": messages,
-            }
-            async with httpx.AsyncClient(timeout=float(self.timeout)) as client:
-                resp = await client.post("https://api.anthropic.com/v1/messages", headers=headers, json=payload)
-                if resp.is_success:
-                    data = resp.json()
-                    content_blocks = data.get("content", [])
-                    text_parts = [b.get("text", "") for b in content_blocks if b.get("type") == "text"]
-                    return "".join(text_parts).strip()
+            try:
+                headers = {
+                    "x-api-key": self.anthropic_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                }
+                messages = [{"role": "user", "content": user_content if isinstance(user_content, list) else user_text}]
+                payload = {
+                    "model": self.anthropic_model,
+                    "max_tokens": self.max_tokens,
+                    "temperature": temperature,
+                    "system": system_prompt,
+                    "messages": messages,
+                }
+                async with httpx.AsyncClient(timeout=float(self.timeout)) as client:
+                    resp = await client.post("https://api.anthropic.com/v1/messages", headers=headers, json=payload)
+                    if resp.is_success:
+                        data = resp.json()
+                        content_blocks = data.get("content", [])
+                        text_parts = [b.get("text", "") for b in content_blocks if b.get("type") == "text"]
+                        return "".join(text_parts).strip()
+                    else:
+                        logger.warning(f"Anthropic returned status {resp.status_code}: {resp.text[:200]}")
+            except Exception as e:
+                logger.warning(f"Anthropic provider call failed ({e}); falling through to deterministic engine.")
 
         raise RuntimeError("No configured AI provider succeeded; invoking deterministic regional engine.")
 
