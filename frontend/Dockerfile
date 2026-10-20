@@ -14,10 +14,15 @@ FROM nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Nginx SPA rewrite configuration
+# Nginx SPA rewrite configuration with MIME types and subpath support
 RUN echo 'server { \
     listen 80; \
     server_name localhost; \
+    include /etc/nginx/mime.types; \
+    location /Sahyadri_prototype/ { \
+        alias /usr/share/nginx/html/; \
+        try_files $uri $uri/ /index.html; \
+    } \
     location / { \
         root /usr/share/nginx/html; \
         index index.html index.htm; \
