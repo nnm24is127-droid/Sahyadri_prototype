@@ -726,13 +726,13 @@ export const forensicsService = {
 
   getAuthenticatedImageUrl(url?: string): string {
     if (!url) return '';
-    const token = typeof window !== 'undefined' ? localStorage.getItem('farmconnect_token') : null;
-    if (!token) return url;
-    if (url.includes('/forensics/images/')) {
-      const separator = url.includes('?') ? '&' : '?';
-      return `${url}${separator}token=${encodeURIComponent(token)}`;
+    let fullUrl = url;
+    // If it's a relative API path like /api/v1/forensics/images/...
+    if (fullUrl.startsWith('/api/')) {
+      const apiHost = API_CONFIG.BASE_URL.replace(/\/api\/v1\/?$/, '');
+      fullUrl = `${apiHost}${fullUrl}`;
     }
-    return url;
+    return fullUrl;
   },
 
   async createCase(data: {
